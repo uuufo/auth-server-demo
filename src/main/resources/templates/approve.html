@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Client Access Approval</title>
+    <div th:replace="fragments :: header"/>
+</head>
+<body>
+<div class="container">
+    <div class="bg-light p-5 rounded-lg m-3">
+
+        <h2 th:text="'Hello, ' + ${principalName} + '.'"></h2>
+        <h3>The following client is requesting access:</h3>
+
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th scope="col">Client Name:</th>
+                <th scope="col">Client ID:</th>
+                <th scope="col">Scope:</th>
+            </tr>
+            </thead>
+            <tbody>
+            <td th:text="${authClient.name}"></td>
+            <td th:text="${codeRequest.clientId}"></td>
+            <td th:text="${codeRequest.scope}"></td>
+            </tbody>
+        </table>
+
+        <div class="d-flex gap-2 col-6">
+            <form class="form-approve" method="post" th:action="@{/approve}" th:object="${codeRequest}">
+                <input type="text" th:value="*{responseType}" th:field="*{responseType}" hidden/>
+                <input type="text" th:value="*{clientId}" th:field="*{clientId}" hidden/>
+                <input type="text" th:value="*{scope}" th:field="*{scope}" hidden/>
+                <input type="text" th:value="*{state}" th:field="*{state}" hidden/>
+                <input type="text" th:value="*{redirectUri}" th:field="*{redirectUri}" hidden/>
+                <button class="btn btn-lg btn-primary" type="submit">Approve</button>
+            </form>
+            <form class="form-deny" method="post" th:action="@{/deny}" th:object="${codeRequest}">
+                <input type="text" th:value="*{responseType}" th:field="*{responseType}" hidden/>
+                <input type="text" th:value="*{clientId}" th:field="*{clientId}" hidden/>
+                <input type="text" th:value="*{scope}" th:field="*{scope}" hidden/>
+                <input type="text" th:value="*{state}" th:field="*{state}" hidden/>
+                <input type="text" th:value="*{redirectUri}" th:field="*{redirectUri}" hidden/>
+                <button class="btn btn-lg btn-danger" type="submit">Deny</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+<div th:replace="fragments :: footer"/>
+</body>
+</html>

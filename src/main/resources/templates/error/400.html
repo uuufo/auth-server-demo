@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Error Page</title>
+    <div th:replace="fragments :: header"/>
+    <style>
+
+    </style>
+</head>
+<body>
+<div th:replace="fragments :: navigation"/>
+<div class="container">
+    <div class="bg-light p-5 rounded-lg m-3">
+        <h1>invalid_request - invalid parameter, or otherwise invalid request</h1>
+
+    </div>
+</div>
+<div th:replace="fragments :: footer"/>
+</body>
+</html>
