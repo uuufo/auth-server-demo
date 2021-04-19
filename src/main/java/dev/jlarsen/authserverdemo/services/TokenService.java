@@ -1,10 +1,9 @@
 package dev.jlarsen.authserverdemo.services;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSObject;
-import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
-import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import dev.jlarsen.authserverdemo.exceptions.TokenException;
@@ -21,6 +20,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
+import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -42,8 +42,9 @@ public class TokenService {
 
     /**
      * Verifies client token requests, returns error to client if verification fails
+     *
      * @param authentication authenticated client requesting token
-     * @param tokenRequest to be verified
+     * @param tokenRequest   to be verified
      */
     @SneakyThrows
     public void verifyClientTokenRequest(Authentication authentication, TokenRequest tokenRequest) {
@@ -77,41 +78,64 @@ public class TokenService {
             throw new TokenException(TokenRequestError.UNSUPPORTED_GRANT_TYPE);
         }
 
-        // now verify self-signed auth code against the current keys in our JWKSet
-        JWSVerifier verifier;
-        for (JWK jwk : keyService.getJwkSet().getKeys()) {
-            verifier = new ECDSAVerifier((ECKey) jwk);
-            if (!jwsObject.verify(verifier)) {
-                // the code signature couldn't be verified against any current keypair
-                throw new TokenException(TokenRequestError.INVALID_GRANT);
-            }
-        }
+        // now verify auth code signature against the keys in our JWKSet
+        verifySignature(jwsObject);
 
         //everything looks good, remove used code from cache
         codes.evict(authentication.getName());
     }
 
     /**
+     * Pulls an authenticated client from the database and compares it's refresh token
+     * @param refreshToken sent by client
+     * @param principal client requesting new access token
+     */
+    public void verifyRefreshToken(String refreshToken, Principal principal) {
+        AuthClient client = authService.getClient(principal.getName());
+        if (client == null) {
+            // couldn't find client?  we just authenticated them!
+            throw new TokenException(TokenRequestError.INVALID_CLIENT);
+        }
+        // got the client, but refresh token does not match
+        if (!client.getRefreshToken().equals(refreshToken)) {
+            throw new TokenException(TokenRequestError.INVALID_GRANT);
+        }
+    }
+
+    /**
+     * Verifies the signature of a JWS against keys in the servers JWKSet
+     * @param jwsObject to be verified
+     */
+    public void verifySignature(JWSObject jwsObject) {
+        boolean result = keyService.getJwkSet().getKeys().stream().anyMatch(jwk -> {
+            try {
+                return jwsObject.verify(new ECDSAVerifier((ECKey) jwk));
+            } catch (JOSEException e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
+        if (!result) {
+            // the code signature couldn't be verified against any of the keys in our JWKSet
+            throw new TokenException(TokenRequestError.INVALID_GRANT);
+        }
+    }
+
+    /**
      * Parses and verifies (Bearer) access tokens
+     *
      * @param token to be verified
      * @return UserPrincipal to be authenticated as User who issued token
      */
     @SneakyThrows
     public UserPrincipal parseToken(String token) {
 
-        // first lets verify the signature on this token
-        SignedJWT jwt = SignedJWT.parse(token);
-        JWSVerifier verifier;
-        for (JWK jwk : keyService.getJwkSet().getKeys()) {
-            verifier = new ECDSAVerifier((ECKey) jwk);
-            if (!jwt.verify(verifier)) {
-                // the code signature couldn't be verified against any current keypair
-                throw new TokenException(TokenRequestError.INVALID_CLIENT);
-            }
-        }
-
-        // signature matches, parse token to get expiration
         JWSObject jwsObject = parseCode(token);
+
+        // first verify the token signature
+        verifySignature(jwsObject);
+
+        // signature matches, get payload for exp and sub claims
         Map<String, Object> payload = jwsObject.getPayload().toJSONObject();
 
         // if token has expired throw exception
@@ -120,12 +144,13 @@ public class TokenService {
             throw new TokenException(TokenRequestError.INVALID_GRANT);
         }
 
-        String userEmail = jwt.getJWTClaimsSet().getSubject();
+        String userEmail = payload.get("sub").toString();
         return new UserPrincipal(userEmail);
     }
 
     /**
      * Creates map to be sent as JSON object response to requesting client including access and refresh tokens
+     *
      * @param authentication client token will be issued to
      * @return response
      */
@@ -146,8 +171,9 @@ public class TokenService {
 
     /**
      * Compiles the required claims then stores them as payload in our self-signed access token
+     *
      * @param clientId of client token will be issued to
-     * @param email username of User the client belongs to
+     * @param email    username of User the client belongs to
      * @return access token (as a serialized self-signed JWT)
      */
     public String createNewAccessToken(String clientId, String email) {
@@ -169,6 +195,7 @@ public class TokenService {
 
     /**
      * Parses a serialized code into an object for verification and payload retrieval
+     *
      * @param code to be parsed
      * @return JWSObject created from parsing our self-signed code
      */
@@ -185,7 +212,8 @@ public class TokenService {
 
     /**
      * Attaches refreshToken to AuthClient
-     * @param clientId of AuthClient
+     *
+     * @param clientId     of AuthClient
      * @param refreshToken to be attached
      */
     public void applyRefreshTokenToClient(String clientId, String refreshToken) {

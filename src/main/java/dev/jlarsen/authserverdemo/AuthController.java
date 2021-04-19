@@ -2,6 +2,7 @@ package dev.jlarsen.authserverdemo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.jlarsen.authserverdemo.models.TokenRequest;
+import dev.jlarsen.authserverdemo.services.AuthService;
 import dev.jlarsen.authserverdemo.services.KeyService;
 import dev.jlarsen.authserverdemo.services.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,11 @@ public class AuthController {
     TokenService tokenService;
 
     @Autowired
+    AuthService authService;
+
+    @Autowired
     ObjectMapper objectMapper;
+
 
     /**
      * Token endpoint used by OAuth 2.0 client to request an access token
@@ -35,9 +40,13 @@ public class AuthController {
     @PreAuthorize("hasAuthority('ROLE_CLIENT')")
     @PostMapping(value = "/token", consumes = "application/x-www-form-urlencoded")
     public HttpEntity<?> getToken(@RequestParam Map<String, String> params, Authentication authentication) {
-        TokenRequest tokenRequest = objectMapper.convertValue(params, TokenRequest.class);
+        if (params.get("grant_type").equals("refresh_token")) {
+            tokenService.verifyRefreshToken(params.get("refresh_token"), authentication);
+        } else {
+            TokenRequest tokenRequest = objectMapper.convertValue(params, TokenRequest.class);
+            tokenService.verifyClientTokenRequest(authentication, tokenRequest);
+        }
 
-        tokenService.verifyClientTokenRequest(authentication, tokenRequest);
         Map<String, Object> response = tokenService.createTokenResponse(authentication);
 
         HttpHeaders headers = new HttpHeaders();

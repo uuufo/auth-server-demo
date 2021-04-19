@@ -2,6 +2,8 @@ package dev.jlarsen.authserverdemo.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.jlarsen.authserverdemo.exceptions.CodeRequestError;
+import dev.jlarsen.authserverdemo.exceptions.TokenException;
+import dev.jlarsen.authserverdemo.exceptions.TokenRequestError;
 import dev.jlarsen.authserverdemo.models.AuthClient;
 import dev.jlarsen.authserverdemo.models.CodeRequest;
 import dev.jlarsen.authserverdemo.repositories.AuthClientRepository;
