@@ -7,6 +7,7 @@ The authorization code grant type is supported along with HTTP Basic authenticat
 The server utilizes Elliptic Curve keysets and encodes payload using the ES256 algorithm.  Both the authorization code and access tokens are issued as self-encoded and signed JWTs containing necessary information.
 
 A sample User is created who owns a client with the id "test-client".  Upon the clients attempted access to a protected resource, the User will be required to login and approve or deny access.  If access is approved, an authorization token will be issued along with a refresh token.
+
 <p align="center">
 <img width="523" alt="screenshot" src="https://user-images.githubusercontent.com/64601713/116919743-9389e080-ac06-11eb-859e-f05d09ab0589.png">
 </p>
