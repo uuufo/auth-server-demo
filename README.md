@@ -43,4 +43,4 @@ This server was written as a learning project and proof-of-concept.
 It is by no means complete, secure, or ready to be used for any production environment.
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)
+[MIT](https://github.com/uuufo/auth-server-demo/blob/main/LICENSE)
